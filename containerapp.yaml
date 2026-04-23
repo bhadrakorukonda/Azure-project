@@ -1,0 +1,42 @@
+type: Microsoft.App/containerApps
+name: llm-inference-api
+properties:
+  configuration:
+    ingress:
+      external: true
+      targetPort: 8000
+      transport: http
+    registries:
+      - server: YOUR_ACR_NAME.azurecr.io
+        identity: system
+  template:
+    containers:
+      - name: llm-inference-api
+        image: YOUR_ACR_NAME.azurecr.io/azure-llm-inference:latest
+        resources:
+          cpu: 1.0
+          memory: 2Gi
+        env:
+          - name: APPLICATIONINSIGHTS_CONNECTION_STRING
+            secretRef: appinsights-connection-string
+        probes:
+          - type: liveness
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 60
+            periodSeconds: 30
+          - type: readiness
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 60
+            periodSeconds: 10
+    scale:
+      minReplicas: 0
+      maxReplicas: 5
+      rules:
+        - name: http-scaling-rule
+          http:
+            metadata:
+              concurrentRequests: "10"
