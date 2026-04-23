@@ -10,7 +10,7 @@ def load_model():
     tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME)
     model = AutoModelForCausalLM.from_pretrained(
         MODEL_NAME,
-        torch_dtype=torch.float32,  # CPU-safe; switch to float16 for GPU
+        torch_dtype=torch.float32,
         device_map="auto",
     )
     model.eval()
@@ -26,7 +26,18 @@ def generate_text(
     temperature: float = 0.7,
 ) -> str:
     """Run inference and return generated text."""
-    inputs = tokenizer(prompt, return_tensors="pt")
+    # Format using TinyLlama's chat template
+    messages = [
+        {"role": "system", "content": "You are a helpful assistant."},
+        {"role": "user", "content": prompt},
+    ]
+    formatted = tokenizer.apply_chat_template(
+        messages,
+        tokenize=False,
+        add_generation_prompt=True,
+    )
+
+    inputs = tokenizer(formatted, return_tensors="pt")
     input_ids = inputs["input_ids"]
 
     with torch.no_grad():
@@ -34,8 +45,9 @@ def generate_text(
             input_ids,
             max_new_tokens=max_tokens,
             temperature=temperature,
-            do_sample=temperature > 0,
+            do_sample=True,
             pad_token_id=tokenizer.eos_token_id,
+            repetition_penalty=1.1,
         )
 
     # Decode only the newly generated tokens
