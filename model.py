@@ -7,11 +7,11 @@ MODEL_NAME = "microsoft/phi-1_5"
 def load_model():
     """Load tokenizer and model from HuggingFace Hub."""
     print(f"Loading model: {MODEL_NAME}")
-    tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME)
+    tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME, trust_remote_code=True)
     model = AutoModelForCausalLM.from_pretrained(
         MODEL_NAME,
         torch_dtype=torch.float32,
-        device_map="auto",
+        trust_remote_code=True,
     )
     model.eval()
     print("Model loaded successfully.")
@@ -26,18 +26,7 @@ def generate_text(
     temperature: float = 0.7,
 ) -> str:
     """Run inference and return generated text."""
-    # Format using TinyLlama's chat template
-    messages = [
-        {"role": "system", "content": "You are a helpful assistant."},
-        {"role": "user", "content": prompt},
-    ]
-    formatted = tokenizer.apply_chat_template(
-        messages,
-        tokenize=False,
-        add_generation_prompt=True,
-    )
-
-    inputs = tokenizer(formatted, return_tensors="pt")
+    inputs = tokenizer(prompt, return_tensors="pt")
     input_ids = inputs["input_ids"]
 
     with torch.no_grad():
@@ -50,6 +39,5 @@ def generate_text(
             repetition_penalty=1.1,
         )
 
-    # Decode only the newly generated tokens
     new_tokens = output_ids[0][input_ids.shape[-1]:]
     return tokenizer.decode(new_tokens, skip_special_tokens=True)
