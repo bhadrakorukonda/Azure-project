@@ -6,13 +6,12 @@ from app.telemetry import track_request
 
 app = FastAPI(title="Azure LLM Inference API", version="1.0.0")
 
-# Load model on startup
-model, tokenizer = None, None
+model = None
 
 @app.on_event("startup")
 async def startup_event():
-    global model, tokenizer
-    model, tokenizer = load_model()
+    global model
+    model, _ = load_model()
 
 
 class GenerateRequest(BaseModel):
@@ -34,13 +33,13 @@ def health():
 
 @app.post("/generate", response_model=GenerateResponse)
 def generate(request: GenerateRequest):
-    if model is None or tokenizer is None:
+    if model is None:
         raise HTTPException(status_code=503, detail="Model not loaded yet.")
 
     start = time.time()
     output = generate_text(
         model=model,
-        tokenizer=tokenizer,
+        tokenizer=None,
         prompt=request.prompt,
         max_tokens=request.max_tokens,
         temperature=request.temperature,
@@ -55,6 +54,6 @@ def generate(request: GenerateRequest):
 
     return GenerateResponse(
         output=output,
-        model="TinyLlama-1.1B",
+        model="phi-2-Q4_K_M",
         latency_ms=round(latency_ms, 2),
     )
